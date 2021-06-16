@@ -1,16 +1,35 @@
-# This is a sample Python script.
+from typing import List
 
-# Press ⌃R to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
+from fastapi import Depends, FastAPI
+from sqlalchemy.orm import Session
+
+import schemas
+import models
+import crud
+from database import SessionLocal, engine
+
+models.Base.metadata.create_all(bind=engine)
+
+app = FastAPI()
 
 
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
+# Dependency
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
 
 
-# Press the green button in the gutter to run the script.
-if __name__ == '__main__':
-    print_hi('PyCharm')
+@app.post("/posts/", response_model=schemas.Post)
+def create_post(
+        post: schemas.PostCreate, db: Session = Depends(get_db)
+):
+    return crud.create_post(db=db, post=post)
 
-# See PyCharm help at https://www.jetbrains.com/help/pycharm/
+
+@app.get("/list/", response_model=List[schemas.Post])
+def read_items(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
+    posts = crud.get_posts(db, skip=skip, limit=limit)
+    return posts
